@@ -6,140 +6,111 @@ using System.Windows.Controls;
 
 namespace DataBase_Firs
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
     public partial class MainWindow : Window
     {
-
-
-        public ObservableCollection<Book> book { get; } = new();
-
-
+        public ObservableCollection<Book> Books { get; } = new ObservableCollection<Book>();
 
         public MainWindow()
         {
             InitializeComponent();
-
             DataContext = this;
         }
 
-
-
-
         private void cmb1_SelectionChanged(object sender, RoutedEventArgs e)
         {
-            using (LibraryContext database = new())
+            if (cmb1.SelectedItem is not ComboBoxItem selectedItem) return;
+
+            cmb2.Items.Clear();
+
+            using (LibraryContext database = new LibraryContext())
             {
-                ComboBoxItem? selectedItem = cmb1.SelectedItem as ComboBoxItem;
-
-                book.Clear();
-
-                if (selectedItem!.Content.ToString() == "Authors")
+                if (selectedItem.Content is "Authors")
                 {
-                    cmb2.Items.Clear();
-
                     var authors = database.Authors;
-
-                    authors.ToList().ForEach(a => cmb2.Items.Add($@"{a.FirstName} {a.LastName}"));
+                    foreach (var author in authors)
+                    {
+                        cmb2.Items.Add($"{author.FirstName} {author.LastName}");
+                    }
                 }
-                else if (selectedItem!.Content.ToString() == "Themes")
+                else if (selectedItem.Content is "Themes")
                 {
-                    cmb2.Items.Clear();
-
                     var themes = database.Themes;
-
-                    themes.ToList().ForEach(t => cmb2.Items.Add($@"{t.Name}"));
+                    foreach (var theme in themes)
+                    {
+                        cmb2.Items.Add(theme.Name);
+                    }
                 }
-                else if (selectedItem!.Content.ToString() == "Categories")
+                else if (selectedItem.Content is "Categories")
                 {
-                    cmb2.Items.Clear();
-
                     var categories = database.Categories;
-
-                    categories.ToList().ForEach(c => cmb2.Items.Add($"{c.Name}"));
+                    foreach (var category in categories)
+                    {
+                        cmb2.Items.Add(category.Name);
+                    }
                 }
             }
         }
 
         private void cmb2_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            using (LibraryContext database = new())
+            if (cmb1.SelectedItem is not ComboBoxItem selectedItem) return;
+            if (cmb2.SelectedItem is not string selectedValue) return;
+
+            Books.Clear();
+
+            using (LibraryContext database = new LibraryContext())
             {
-                ComboBoxItem? selectedItem = cmb1.SelectedItem as ComboBoxItem;
-
-
-                if (selectedItem!.Content.ToString() == "Authors")
+                if (selectedItem.Content is "Authors")
                 {
-                    book.Clear();
+                    var authorBooks = database.Books
+                        .Join(database.Authors,
+                            book => book.IdAuthor,
+                            author => author.Id,
+                            (book, author) => new { Book = book, Author = author })
+                        .Where(x => x.Author.FirstName + " " + x.Author.LastName == selectedValue)
+                        .Select(x => x.Book)
+                        .ToList();
 
-                    var selectedAuthor = cmb2.SelectedItem as string;
-
-                    if (selectedAuthor != null)
+                    foreach (var book in authorBooks)
                     {
-                        var authorBooks = database.Books
-                            .Join(
-                                database.Authors,
-                                b => b.IdAuthor,
-                                a => a.Id,
-                                (b, a) => new { Book = b, Author = a }
-                            )
-                            .ToList()
-                            .Where(x => $"{x.Author.FirstName} {x.Author.LastName}" == selectedAuthor)
-                            .Select(x => x.Book)
-                            .ToList();
-
-                        authorBooks.ForEach(b => book.Add(b));
+                        Books.Add(book);
                     }
                 }
-                else if (selectedItem.Content.ToString() == "Themes")
+                else if (selectedItem.Content is "Themes")
                 {
-                    var selectedTheme = cmb2.SelectedItem as string;
+                    var themeBooks = database.Books
+                        .Join(database.Themes,
+                            book => book.IdThemes,
+                            theme => theme.Id,
+                            (book, theme) => new { Book = book, Theme = theme })
+                        .Where(x => x.Theme.Name == selectedValue)
+                        .Select(x => x.Book)
+                        .ToList();
 
-                    if (selectedTheme != null)
+                    foreach (var book in themeBooks)
                     {
-                        book.Clear();
-
-                        var themeBooks = database.Books
-                            .Join(
-                                database.Themes,
-                                b => b.IdThemes,
-                                t => t.Id,
-                                (b, t) => new { Book = b, Theme = t }
-                            )
-                            .ToList()
-                            .Where(x => x.Theme.Name == selectedTheme)
-                            .Select(x => x.Book)
-                            .ToList();
-
-                        themeBooks.ForEach(b => book.Add(b));
+                        Books.Add(book);
                     }
                 }
-                else if (selectedItem.Content.ToString() == "Categories")
+                else if (selectedItem.Content is "Categories")
                 {
-                    var selectedCategory = cmb2.SelectedItem as string;
+                    var categoryBooks = database.Books
+                        .Join(database.Categories,
+                            book => book.IdCategory,
+                            category => category.Id,
+                            (book, category) => new { Book = book, Category = category })
+                        .Where(x => x.Category.Name == selectedValue)
+                        .Select(x => x.Book)
+                        .ToList();
 
-                    if (selectedCategory != null)
+                    foreach (var book in categoryBooks)
                     {
-                        book.Clear();
-
-                        var categoryBooks = database.Books
-                            .Join(
-                                database.Categories,
-                                b => b.IdCategory,
-                                c => c.Id,
-                                (b, c) => new { Book = b, Category = c }
-                            )
-                            .ToList()
-                            .Where(x => x.Category.Name == selectedCategory)
-                            .Select(x => x.Book)
-                            .ToList();
-
-                        categoryBooks.ForEach(b => book.Add(b));
+                        Books.Add(book);
                     }
                 }
-
             }
         }
+
+
     }
 }
